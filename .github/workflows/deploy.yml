@@ -1,0 +1,64 @@
+name: Test and deploy Louvre Defender
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - name: Browser acceptance checks
+        run: |
+          npm run dev -- --port 5173 > /tmp/riot-vite.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          for attempt in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:5173 > /dev/null; then break; fi
+            sleep 0.25
+          done
+          npm run test:browser
+      - run: npm run build
+      - name: Production survival acceptance
+        run: |
+          npm run preview -- --port 4173 > /tmp/riot-preview.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          for attempt in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:4173 > /dev/null; then break; fi
+            sleep 0.25
+          done
+          TEST_URL=http://127.0.0.1:4173 node tests/full-watch.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-evidence
+          path: artifacts/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+      - name: Deploy static build
+        id: deployment
+        uses: actions/deploy-pages@v4
