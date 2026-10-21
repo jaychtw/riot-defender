@@ -37,9 +37,9 @@ export function renderShell(chapter, t) {
         </div>
         <div class="arena-bottom"><div><span class="legend-dot blue"></span>${label('legend.defender')}<span class="legend-dot red"></span>${label('legend.intruder')}<span class="legend-gate"></span>${label('legend.gate')}</div><span id="arena-caption"></span></div>
         <div id="touch-controls" class="touch-controls" role="group" data-i18n-aria="touch.label">
-          <button id="touch-left" data-direction="-1" data-i18n-aria="touch.left" aria-pressed="false" disabled><span aria-hidden="true"><svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M2 12 11 3v6h11v6H11v6Z"/></svg></span></button>
-          <button id="touch-switch" data-control="switch" data-i18n-aria="touch.teleport" disabled>${label('touch.switch')}</button>
-          <button id="touch-right" data-direction="1" data-i18n-aria="touch.right" aria-pressed="false" disabled><span aria-hidden="true"><svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="m22 12-9-9v6H2v6h11v6Z"/></svg></span></button>
+          <button id="touch-left" data-direction="-1" data-i18n-aria="touch.left" aria-pressed="false" disabled><svg aria-hidden="true" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10a9 9 0 1 1 2.6 8.1M3 4v6h6"/></svg>${label('touch.counterclockwise','span','touch-button-label')}</button>
+          <button id="touch-switch" data-control="switch" data-i18n-aria="touch.teleport" disabled><svg aria-hidden="true" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H4m4-4L4 7l4 4M4 17h16m-4-4 4 4-4 4"/></svg>${label('touch.switch','span','touch-button-label')}</button>
+          <button id="touch-right" data-direction="1" data-i18n-aria="touch.right" aria-pressed="false" disabled><svg aria-hidden="true" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path transform="translate(24 0) scale(-1 1)" d="M3 10a9 9 0 1 1 2.6 8.1M3 4v6h6"/></svg>${label('touch.clockwise','span','touch-button-label')}</button>
         </div>
         ${label('touch.contact','p','contact-note')}
       </div>

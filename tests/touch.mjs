@@ -32,6 +32,15 @@ async function down(selector){const p=await point(selector);await cdp.send('Inpu
 const up=async()=>{if(touching){await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});touching=false;}};
 const cancel=async()=>{if(touching){await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});touching=false;}};
 const advance=ms=>page.clock.runFor(ms);
+async function readableControlLabels(locale){
+ const expected=locale==='en'?['Counterclockwise','Switch','Clockwise']:['逆時針','切換','順時針'];
+ assert.deepEqual(await page.locator('.touch-button-label').allTextContents(),expected);
+ for(const label of await page.locator('.touch-button-label').all()){
+  const fits=await label.evaluate(el=>{const text=el.getBoundingClientRect(),button=el.closest('button').getBoundingClientRect();return text.left>=button.left+2&&text.right<=button.right-2&&text.top>=button.top&&text.bottom<=button.bottom;});
+  assert.ok(fits,`${locale}: control label must fit inside its button without clipping`);
+ }
+}
+
 async function fresh(){await cancel();await page.locator('#start').click({force:true});await advance(50);assert.equal((await state()).phase,'playing');}
 async function stopped(){const value=await gate();await advance(250);near(await gate(),value,1e-7);assert.equal(await page.locator('.touch-controls .pressed').count(),0);}
 try{
@@ -48,12 +57,14 @@ try{
    assert.ok(row.y>=arena.y+arena.height);assert.ok(row.y+row.height<=844);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
    const rects=[];for(const id of ['#touch-left','#touch-switch','#touch-right']){const b=await page.locator(id).boundingBox();assert.ok(b.width>=44&&b.height>=44);rects.push(b);}
    near(rects[0].y,rects[1].y,1);near(rects[1].y,rects[2].y,1);assert.ok(rects[1].x-rects[0].x-rects[0].width>=10);assert.ok(rects[2].x-rects[1].x-rects[1].width>=10);
+   await readableControlLabels(locale);
    const scale=arena.width/900;metrics.push({locale,width,unitDiameterCss:20*scale,contactDiameterCss:10*scale,visualContactLeadCss:5*scale,touchTarget:{width:rects[0].width,height:rects[0].height}});
    assert.ok(await page.locator('#arena-timer').isVisible());
+   if(width===320)await page.locator('#touch-controls').screenshot({path:`artifacts/touch-${locale}-320-controls.png`});
    if(width===390)await page.screenshot({path:`artifacts/touch-${locale}-mobile-opening.png`});
   }
  }
- pass('Both languages fit 320–430px mobile screens; controls stay below the field, horizontally aligned, separated, and at least 44px');
+ pass('Both languages show unclipped rotation labels at 320–430px; controls stay below the field, horizontally aligned, separated, and at least 44px');
  await page.setViewportSize({width:390,height:844});await fresh();
  let before=await gate();await down('#touch-left');await advance(400);let after=await gate();near(delta(before,after),-144);await up();await stopped();
  pass('Real touchscreen left hold moves continuously counterclockwise; release immediately stops movement');
@@ -119,9 +130,13 @@ try{
   await fresh();await down('#touch-right');await page.evaluate(()=>{window.riotDefender.test.game.remaining=.01;});await advance(50);assert.equal((await state()).phase,'finale');await up();const finaleGate=await gate();await advance(3000);assert.equal((await state()).phase,'victory');near(await gate(),finaleGate,1e-7);assert.equal(await page.locator('#touch-switch').isDisabled(),true);
   pass('Defeat and the victory finale clear gestures, disable controls, and preserve established outcomes');
  }
- await page.setViewportSize({width:844,height:390});await fresh();await page.screenshot({path:'artifacts/touch-landscape.png'});
- const landscapeRow=await page.locator('#touch-controls').boundingBox();assert.ok(landscapeRow.y+landscapeRow.height<=390);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
- pass('Landscape touch viewport keeps arena and controls accessible');
+ await page.setViewportSize({width:844,height:390});
+ for(const locale of ['en','zh-Hant']){
+  await page.locator('#language').selectOption(locale);await fresh();await readableControlLabels(locale);
+  await page.screenshot({path:`artifacts/touch-${locale}-landscape.png`});
+  const landscapeRow=await page.locator('#touch-controls').boundingBox();assert.ok(landscapeRow.y+landscapeRow.height<=390);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ }
+ pass('Landscape touch viewport keeps arena, controls, and both languages’ rotation labels accessible');
  assert.deepEqual(errors,[]);pass('No browser exceptions or console errors');
  await fs.writeFile(`artifacts/touch-results-${dev?'development':'production'}.json`,JSON.stringify({url,checks,metrics,errors,devFixtures:dev},null,2));
 }finally{await browser.close();}
