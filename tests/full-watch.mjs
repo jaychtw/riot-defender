@@ -6,7 +6,11 @@ import {CHAPTER,P,mod,perimeterOf,isOpen,sweptOpen,distanceToFence} from '../src
 const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||(existsSync('/usr/bin/chromium')?'/usr/bin/chromium':chromium.executablePath()),args:['--no-sandbox']});
 const locale=process.env.TEST_LOCALE||'en';
 assert.ok(['en','zh-Hant'].includes(locale));
-const page=await browser.newPage({viewport:{width:1440,height:1120}}),errors=[];
+const input=process.env.TEST_INPUT||'keyboard';
+assert.ok(['keyboard','touch'].includes(input));
+const artifactPrefix=`production-${locale}${input==='touch'?'-touch':''}`;
+const page=await browser.newPage({viewport:input==='touch'?{width:390,height:844}:{width:1440,height:1120},hasTouch:input==='touch',isMobile:input==='touch'}),errors=[];
+const cdp=input==='touch'?await page.context().newCDPSession(page):null;
 page.on('pageerror',e=>errors.push(e.message));
 function choose(g){
  const reds=g.units.filter(u=>u.type==='red'&&distanceToFence(u)<38);
@@ -30,13 +34,19 @@ try{
   if(state.phase==='defeat')throw new Error(`Default watch defeated at ${90-state.remaining}s`);
   if(state.phase==='victory')break;
   const action=state.phase==='playing'?choose(state):{teleport:false,direction:0};
-  if(action.direction!==held){if(held)await page.keyboard.up(held===1?'ArrowRight':'ArrowLeft');if(action.direction)await page.keyboard.down(action.direction===1?'ArrowRight':'ArrowLeft');held=action.direction;}
-  if(action.teleport)await page.keyboard.press('Space');
+  if(action.direction!==held){
+   if(input==='touch'){
+    if(held)await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+    if(action.direction){const rect=await page.locator(action.direction===1?'#touch-right':'#touch-left').boundingBox();await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:rect.x+rect.width/2,y:rect.y+rect.height/2,id:1}]});}
+   }else{if(held)await page.keyboard.up(held===1?'ArrowRight':'ArrowLeft');if(action.direction)await page.keyboard.down(action.direction===1?'ArrowRight':'ArrowLeft');}
+   held=action.direction;
+  }
+  if(action.teleport){if(input==='touch')await page.locator('#touch-switch').tap();else await page.keyboard.press('Space');}
   await page.clock.runFor(50);
-  if(!captured&&state.remaining<45){await page.screenshot({path:`artifacts/production-${locale}-midwatch.png`,fullPage:true});captured=true;}
+  if(!captured&&state.remaining<45){await page.screenshot({path:`artifacts/${artifactPrefix}-midwatch.png`,fullPage:true});captured=true;}
  }
  assert.equal(state.phase,'victory');assert.equal(state.remaining,0);assert.equal(state.units.filter(u=>u.type==='red').length,0);assert.ok(state.defenders>0);assert.deepEqual(errors,[]);
- await page.screenshot({path:`artifacts/production-${locale}-victory.png`,fullPage:true});
- const result={locale,preset:'90s / Normal',seed:71,controls:'Real ArrowLeft/ArrowRight/Space key events',clock:'90 virtual seconds + automatic finale',phase:state.phase,defenders:state.defenders,kills:state.kills,maxUnits,errors};
- await fs.writeFile(`artifacts/production-${locale}-full-watch.json`,JSON.stringify(result,null,2));console.log(JSON.stringify(result,null,2));
+ await page.screenshot({path:`artifacts/${artifactPrefix}-victory.png`,fullPage:true});
+ const result={locale,input,preset:'90s / Normal',seed:71,controls:input==='touch'?'Real touchscreen hold buttons and Switch':'Real ArrowLeft/ArrowRight/Space key events',clock:'90 virtual seconds + automatic finale',phase:state.phase,defenders:state.defenders,kills:state.kills,maxUnits,errors};
+ await fs.writeFile(`artifacts/${artifactPrefix}-full-watch.json`,JSON.stringify(result,null,2));console.log(JSON.stringify(result,null,2));
 }finally{await browser.close();}

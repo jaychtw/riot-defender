@@ -36,7 +36,21 @@ export class Renderer{
  if(game.breach){const p=pointAt(game.breach.s);c.fillStyle='#c65d4a';c.beginPath();c.arc(p.x,p.y,10,0,Math.PI*2);c.fill();c.strokeStyle='#c65d4a';c.lineWidth=2;c.beginPath();c.arc(p.x,p.y,19,0,Math.PI*2);c.stroke();c.fillStyle='#fff6e3';c.font='bold 14px Arial';c.fillText('!',p.x,p.y+5);}
  if(game.phase==='finale')this.cavalry(game.finaleTime);
  }
- unit(u){const c=this.ctx;c.fillStyle='#30483519';c.beginPath();c.ellipse(u.x+1,u.y+4,6,3,0,0,Math.PI*2);c.fill();c.beginPath();c.arc(u.x,u.y,5,0,Math.PI*2);c.fillStyle=u.type==='blue'?'#5a94b7':'#c26452';c.fill();c.lineWidth=u.type==='blue'?1.7:1;c.strokeStyle=u.type==='blue'?'#f6fbf8':'#a84f41';c.stroke();if(u.type==='blue'){c.fillStyle='#e2f0f3';c.beginPath();c.arc(u.x,u.y,1.2,0,Math.PI*2);c.fill();}if(u.state==='waiting'){c.strokeStyle='#6795a17a';c.lineWidth=1;c.beginPath();c.arc(u.x,u.y,8,0,Math.PI*2);c.stroke();}}
+ // The outer 10-unit ring doubles visibility. The solid 5-unit core retains
+ // the exact simulation contact radius, rather than implying a larger hitbox.
+ unit(u){
+  const c=this.ctx,blue=u.type==='blue';c.save();
+  c.fillStyle='#30483519';c.beginPath();c.ellipse(u.x+1,u.y+7,11,4,0,0,Math.PI*2);c.fill();
+  c.fillStyle=blue?'#5a94b7':'#c26452';c.globalAlpha=.35;
+  c.beginPath();c.arc(u.x,u.y,10,0,Math.PI*2);c.fill();c.globalAlpha=1;
+  c.strokeStyle=blue?'#397899':'#9f4235';c.lineWidth=1.5;c.stroke();
+  c.beginPath();c.arc(u.x,u.y,CHAPTER.radius,0,Math.PI*2);
+  c.fillStyle=blue?'#367da7':'#b94e3d';c.fill();
+  c.lineWidth=1.2;c.strokeStyle=blue?'#f6fbf8':'#f9e5d2';c.stroke();
+  if(blue){c.fillStyle='#e2f0f3';c.beginPath();c.arc(u.x,u.y,1.5,0,Math.PI*2);c.fill();}
+  if(u.state==='waiting'){c.strokeStyle='#457e9a88';c.lineWidth=1;c.beginPath();c.arc(u.x,u.y,13,0,Math.PI*2);c.stroke();}
+  c.restore();
+ }
  cavalry(t){const c=this.ctx;const progress=Math.min(1,t/2.6);c.save();
   c.fillStyle='#9f945d';c.font='600 12px Arial, "Noto Sans CJK TC", sans-serif';c.textAlign='center';c.fillText(this.t('arena.reinforcements'),450,77);
   for(let i=0;i<3;i++){

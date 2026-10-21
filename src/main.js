@@ -6,6 +6,7 @@ import { createI18n, initialLocale } from './i18n.js';
 import { renderShell, arrowIcon, escapeHTML } from './view.js';
 import { Game } from './simulation.js';
 import { Renderer } from './renderer.js';
+import { TouchControls } from './touch-controls.js';
 
 // Locale preferences are shared across chapters; changing language never recreates a game.
 let storage;
@@ -27,6 +28,16 @@ let duration = chapter.rules.duration, intensity = chapter.rules.intensity;
 let last = performance.now(), lastPhase = 'setup', lastDefenders = 0;
 let soundEnabled = false, audio = null, selectedNote = false;
 const held = new Set();
+const touchControls = new TouchControls($('#touch-controls'), {
+  canPlay:() => game?.phase === 'playing' && !paused && !$('#help-dialog').open,
+  onSwitch:performSwitch,
+});
+function clearInput() { held.clear(); touchControls.reset(); }
+function performSwitch() {
+  if (!game || game.phase !== 'playing' || paused) return;
+  game.teleport(); tone(250,.07);
+  if (game.phase === 'defeat') { lastPhase='defeat'; result(); }
+}
 
 function announce(text) { $('#announcement').textContent = text; }
 function tone(freq = 440, length = .08, volume = .025) {
@@ -67,7 +78,7 @@ function setOverlay(className, markup) {
 }
 function renderOverlay() {
   if (!game) {
-    setOverlay('ready', `<h2>${html('overlay.ready')}</h2><button id="arena-start" class="secondary-button">${html('action.start')} <span>${arrowIcon}</span></button>`);
+    setOverlay('ready', `<button id="arena-start" class="secondary-button">${html('action.start')} <span>${arrowIcon}</span></button>`);
   } else if (game.phase === 'defeat' || game.phase === 'victory') {
     const won = game.phase === 'victory';
     const summary = {defenders:game.defenders, kills:game.kills, seconds:Math.floor(game.duration-game.remaining)};
@@ -80,7 +91,7 @@ function renderOverlay() {
 }
 function setPause(value) {
   if (!game || game.phase !== 'playing') return;
-  paused = value; held.clear(); renderOverlay(); updateHUD();
+  paused = value; clearInput(); renderOverlay(); updateHUD();
   announce(t(value?'announce.pause':'announce.resume'));
 }
 function settingsLocked(locked) {
@@ -89,7 +100,7 @@ function settingsLocked(locked) {
 function start() {
   $('#breach-indicator').hidden = true;
   game = new Game({duration, intensity, seed:Math.floor(Math.random()*4294967296)});
-  paused = false; held.clear(); lastDefenders = 0; lastPhase = 'playing';
+  paused = false; clearInput(); lastDefenders = 0; lastPhase = 'playing';
   settingsLocked(true);
   $('.arena-wrap').classList.add('active'); $('.arena-wrap').classList.remove('finale');
   $('#new-watch').hidden = false; $('#pause').disabled = false;
@@ -99,7 +110,7 @@ function start() {
 }
 function setup() {
   $('#breach-indicator').hidden = true;
-  game = null; paused = false; held.clear(); lastPhase = 'setup'; selectedNote = false;
+  game = null; paused = false; clearInput(); lastPhase = 'setup'; selectedNote = false;
   settingsLocked(false); $('#pause').disabled = true; $('#new-watch').hidden = true;
   $('.arena-wrap').classList.remove('active','finale'); renderOverlay(); updateHUD();
 }
@@ -109,7 +120,7 @@ function result() {
     const marker = $('#breach-indicator'); marker.hidden = false;
     marker.style.left = (game.breach.x/900*100)+'%'; marker.style.top = (game.breach.y/760*100)+'%';
   }
-  held.clear(); $('#pause').disabled = true; settingsLocked(false);
+  clearInput(); $('#pause').disabled = true; settingsLocked(false);
   renderOverlay(); updateHUD(); tone(won?660:160,.45);
   announce(t(won?'announce.victory':'announce.defeat'));
 }
@@ -122,6 +133,9 @@ function updateHUD() {
   const remaining = game?.remaining ?? duration, seconds = Math.max(0, Math.ceil(remaining-1e-7));
   const state = !game ? 'setup' : paused ? 'paused' : game.phase;
   $('#timer').textContent = `${String(Math.floor(seconds/60)).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`;
+  $('#arena-timer').textContent = $('#timer').textContent;
+  touchControls.sync();
+  $('.game-panel').classList.toggle('playing', Boolean(game && game.phase === 'playing' && !paused));
   $('#defenders').textContent = String(game?.defenders??0).padStart(2,'0');
   $('#firepower').textContent = game?.defenders??0;
   $('#time-progress').style.width = (remaining/(game?.duration??duration)*100)+'%';
@@ -146,7 +160,7 @@ $('#new-watch').addEventListener('click', setup);
 $('#pause').addEventListener('click', () => { setPause(!paused); document.activeElement?.blur(); });
 $('#language').addEventListener('change', event => {
   if (i18n.setLocale(event.target.value)) {
-    held.clear(); applyTranslations(); renderer.draw(game); announce(t('settings.languageChanged'));
+    clearInput(); applyTranslations(); renderer.draw(game); announce(t('settings.languageChanged'));
   }
 });
 for (const [id,kind] of [['#durations','duration'],['#intensities','intensity']]) {
@@ -165,24 +179,28 @@ $('#sound').addEventListener('click', () => {
   soundEnabled = !soundEnabled; updateSound(); if (soundEnabled) tone(440,.1); document.activeElement?.blur();
 });
 document.addEventListener('keydown', event => {
-  if ($('#help-dialog').open || !game || game.phase!=='playing') return;
-  if (['Space','ArrowLeft','ArrowRight'].includes(event.code) && event.target.closest('button,a,input,select,textarea')) return;
+  if (event.defaultPrevented || $('#help-dialog').open || !game || game.phase!=='playing') return;
+  const onTouchButton = Boolean(event.target.closest('#touch-controls button'));
+  if (['Space','ArrowLeft','ArrowRight'].includes(event.code) && event.target.closest('button,a,input,select,textarea') && !onTouchButton) return;
   if (['ArrowLeft','ArrowRight','Space'].includes(event.code)) event.preventDefault();
   if (event.code==='KeyP' || event.code==='Escape') { if (!event.repeat) setPause(!paused); return; }
   if (paused) return;
   if (event.code==='Space' && !event.repeat) {
-    game.teleport(); tone(250,.07); if (game.phase==='defeat') { lastPhase='defeat'; result(); } return;
+    performSwitch(); return;
   }
   if (event.code==='ArrowLeft' || event.code==='ArrowRight') held.add(event.code);
 });
 document.addEventListener('keyup', event => held.delete(event.code));
-window.addEventListener('blur', () => { held.clear(); if (game?.phase==='playing') setPause(true); });
+window.addEventListener('blur', () => { clearInput(); if (game?.phase==='playing') setPause(true); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && game?.phase==='playing') setPause(true); });
+window.addEventListener('pagehide', clearInput);
+window.addEventListener('resize', clearInput);
+window.addEventListener('orientationchange', clearInput);
 let hudClock = 0;
 function frame(now) {
   const dt = Math.min(.05, Math.max(0,(now-last)/1000)); last = now;
   if (game && !paused && ['playing','finale'].includes(game.phase)) {
-    game.update(dt,{direction:(held.has('ArrowRight')?1:0)-(held.has('ArrowLeft')?1:0)});
+    game.update(dt,{direction:Math.sign((held.has('ArrowRight')?1:0)-(held.has('ArrowLeft')?1:0)+touchControls.direction)});
     if (game.defenders > lastDefenders) {
       lastDefenders=game.defenders; tone(500+Math.min(400,game.defenders*20),.10);
       announce(t('announce.recruit',{count:game.defenders}));
@@ -190,7 +208,7 @@ function frame(now) {
     if (game.phase !== lastPhase) {
       lastPhase = game.phase;
       if (game.phase === 'finale') {
-        held.clear(); $('#pause').disabled=true; $('.arena-wrap').classList.add('finale');
+        clearInput(); $('#pause').disabled=true; $('.arena-wrap').classList.add('finale');
         tone(520,.3); announce(t('announce.finale'));
       }
       if (game.phase==='defeat' || game.phase==='victory') result();

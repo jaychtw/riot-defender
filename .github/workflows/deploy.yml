@@ -44,6 +44,7 @@ jobs:
           done
           TEST_URL=http://127.0.0.1:4173 node tests/full-watch.mjs
           TEST_URL=http://127.0.0.1:4173 TEST_LOCALE=zh-Hant node tests/full-watch.mjs
+          TEST_URL=http://127.0.0.1:4173 TEST_LOCALE=zh-Hant TEST_INPUT=touch node tests/full-watch.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

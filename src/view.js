@@ -27,16 +27,21 @@ export function renderShell(chapter, t) {
     </section>
     <section class="game-layout" data-i18n-aria="arena.label">
       <div class="game-panel">
-        <div class="arena-top"><span><i class="status-dot"></i><span id="arena-status"></span></span>${label('arena.sector','span','sector-label')}<button id="pause" class="mini-button" disabled>||</button></div>
+        <div class="arena-top"><span><i class="status-dot"></i><span id="arena-status"></span></span>${label('arena.sector','span','sector-label')}<span id="arena-timer" class="arena-timer" data-i18n-aria="stats.arrival">01:30</span><button id="pause" class="mini-button" disabled>||</button></div>
         <div class="arena-wrap">
           <canvas id="arena" width="900" height="760" data-i18n-aria="arena.controls"></canvas>
           <div class="landmark">${chapter.artwork()}</div>
-          <div class="map-label">${label('chapter.mapLabel')}${label('chapter.established','small')}</div>
           <div id="game-overlay" class="game-overlay ready"></div>
           <div class="corner-mark tl"></div><div class="corner-mark tr"></div><div class="corner-mark bl"></div><div class="corner-mark br"></div>
           <div id="breach-indicator" hidden aria-hidden="true"><i>!</i>${label('arena.breachPoint')}</div>
         </div>
         <div class="arena-bottom"><div><span class="legend-dot blue"></span>${label('legend.defender')}<span class="legend-dot red"></span>${label('legend.intruder')}<span class="legend-gate"></span>${label('legend.gate')}</div><span id="arena-caption"></span></div>
+        <div id="touch-controls" class="touch-controls" role="group" data-i18n-aria="touch.label">
+          <button id="touch-left" data-direction="-1" data-i18n-aria="touch.left" aria-pressed="false" disabled><span aria-hidden="true"><svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M2 12 11 3v6h11v6H11v6Z"/></svg></span></button>
+          <button id="touch-switch" data-control="switch" data-i18n-aria="touch.teleport" disabled>${label('touch.switch')}</button>
+          <button id="touch-right" data-direction="1" data-i18n-aria="touch.right" aria-pressed="false" disabled><span aria-hidden="true"><svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="m22 12-9-9v6H2v6h11v6Z"/></svg></span></button>
+        </div>
+        ${label('touch.contact','p','contact-note')}
       </div>
       <aside>
         <div class="mission-heading">${label('mission.chapter','span','eyebrow')}${label('mission.mode','span','outline-tag')}</div>
@@ -62,6 +67,7 @@ export function renderShell(chapter, t) {
   <dialog id="help-dialog" aria-labelledby="help-heading">
     <button class="dialog-close" data-i18n-aria="action.closeHelp">×</button>${label('help.title','span','eyebrow')}<h2 id="help-heading" data-i18n="help.heading"></h2>
     <p>${label('help.rotateBefore')}<kbd>←</kbd>${label('help.rotateBetween')}<kbd>→</kbd>${label('help.rotateAfter')}${label('controls.space','kbd')}${label('help.jumpAfter')}</p>
+    <p>${label('help.touch')}</p>
     <p>${label('help.blueTitle','b')}${label('help.blue')}</p><p>${label('help.redTitle','b')}${label('help.red')}</p>
     <p>${label('help.defense')}<kbd>P</kbd>${label('help.pauseBetween')}<kbd>ESC</kbd>${label('help.pauseAfter')}</p>
     ${label('help.disclaimer','p','muted')}<button class="primary-button dialog-done">${label('action.understood')}<span>${arrowIcon}</span></button>
