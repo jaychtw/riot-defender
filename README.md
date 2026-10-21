@@ -17,6 +17,10 @@ Hold **Left / Right** to move the opening counterclockwise / clockwise. Tap **Sp
 
 Choose **60 / 90 / 120 seconds** and **Calm / Normal / Chaos**. Defaults: **90 seconds, Normal**. A red already touching the gate breaches immediately; a separated red still has to reach it. Blue units add firepower only on reaching the center. Every recruited defender adds one nearest-fence elimination per second. At zero, controls lock and a 2.8-second automatic cavalry finale clears the remaining reds before Victory.
 
+## Language settings
+
+Use **Language → English / 繁體中文** in the header. The selection is remembered in local storage across reloads and chapters. With no saved choice, an English or Traditional Chinese browser preference is used; unsupported languages fall back to English. Switching languages preserves the current watch, selected presets, recruitment, and pause/result state. Menus, instructions, HUD, Canvas labels, results, metadata, and screen-reader labels are translated. Language switching still works when storage is blocked; in that case the choice lasts for the current page only. Chinese typography uses the device's Traditional Chinese font stack, with no external font requests.
+
 ## Verify
 
 ```sh
@@ -26,6 +30,7 @@ npm run build            # production static site in dist/
 npm run preview -- --port 4173
 TEST_URL=http://127.0.0.1:4173 npm run test:browser
 TEST_URL=http://127.0.0.1:4173 node tests/full-watch.mjs
+TEST_URL=http://127.0.0.1:4173 TEST_LOCALE=zh-Hant node tests/full-watch.mjs
 ```
 
 Browser tests use `/usr/bin/chromium` when present, otherwise Playwright's bundled browser. Set `CHROMIUM_PATH` to override. Install Chromium on a fresh machine with `npx playwright install --with-deps chromium`. Screenshots and test reports are generated in `artifacts/` and ignored by Git. Development-only deterministic fixture hooks are stripped from production; the production full-watch test uses real key events and a seeded random generator with a virtual browser clock, without mutating game state.
@@ -43,9 +48,18 @@ To publish manually after enabling Pages, push `main` or run **Test and deploy L
 - `src/simulation.js`: deterministic state, circular perimeter geometry, swept gate exposure, physical circle contacts, recruitment, spawn director, firing cadence, and finale.
 - `src/renderer.js`: schematic Canvas arena, outlined blue units, red units, gate, thin fire effects, and abstract helicopter cavalry.
 - `src/landmark.js`: independent original frontal Louvre SVG, rendered above Canvas so effects do not obscure the building.
+- `src/chapters/`: chapter registry and per-chapter identity, artwork, simulation defaults, and localized landmark copy. Only `louvre` is registered.
+- `src/locales/` / `src/i18n.js`: shared English and Traditional Chinese dictionaries, preference persistence, interpolation, and English fallback.
+- `src/view.js`: shared, chapter-aware HTML shell; language changes update its text without replacing the simulation.
 - `src/main.js` / `src/style.css`: setup, HUD, controls, accessible dialogs, sound, responsive layout, and reduced-motion support.
 - `tests/`: simulation and browser acceptance checks. Source GDD and implementation prompt are retained in `docs/`.
 
 `CHAPTER` contains the gate dimensions, unit speeds, and cap. Side length is 490 units; opening is 98 units (20% of a side), gate speed 360 units/s, blues 120 units/s, reds approximately 24 units/s, circle radius 5, active-unit cap 180. Red rate is `(0.75 + 4.5 × elapsed / duration + min(10, 0.45 × recruited)) × intensity`, with multipliers 0.6 / 1 / 1.6. The first two blue arrivals approach the initial gate; later arrivals spread around the perimeter. The simulation substeps at a maximum 1/120 second; rendering clamps large frame delays and pauses hidden tabs.
 
 Balance is an initial playtest baseline. Seeded legal controllers complete every preset, but human playtesting is still needed to tune perceived difficulty. No other chapters, manual aiming, upgrades, weapons, multiplayer, or required mobile controls are included.
+
+## Future chapter and language extensions
+
+Chapter-specific names, locations, artwork descriptions, and map captions belong to each chapter's `messages`, not shared translations or controller code. A chapter definition supplies `id`, `number`, `coordinates`, `artwork`, `rules`, and `messages`; register it in `src/chapters/index.js` when a future chapter is authorized. The active chapter currently remains Louvre. Runtime chapter selection and changes to collision geometry are not implemented by this bilingual update.
+
+For another language, add its shared dictionary in `src/locales/`, register its native label and browser aliases in `src/i18n.js`, and supply each chapter's localized messages. Existing English fallback allows staged translation. Keep interpolation tokens consistent. `npm test` checks dictionary coverage and chapter membership; the browser suite covers persistence, restricted storage, language changes during play/pause/results, instructions, Canvas text, accessibility labels, and 320px/390px layouts. The CI deploy workflow also completes the production survival watch in both languages.

@@ -1,58 +1,208 @@
 import '@fontsource-variable/dm-sans';
 import '@fontsource/libre-caslon-display/latin-400.css';
 import './style.css';
-import { louvreSVG } from './landmark.js';
-import { Game, CHAPTER } from './simulation.js';
+import { ACTIVE_CHAPTER } from './chapters/index.js';
+import { createI18n, initialLocale } from './i18n.js';
+import { renderShell, arrowIcon, escapeHTML } from './view.js';
+import { Game } from './simulation.js';
 import { Renderer } from './renderer.js';
-const arrowIcon='<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 13 13 3M4 3h9v9" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>';
-const app=document.querySelector('#app');
-app.innerHTML=`<header class="site-header"><a class="wordmark" href="./" aria-label="Riot Defender home"><span class="brand-icon" aria-hidden="true"><svg viewBox="0 0 30 30" width="28" height="28"><path d="M3 25 15 4 27 25ZM15 4v21M9 15l12 10M21 15 9 25" fill="none" stroke="currentColor" stroke-width="1.3"/></svg></span> RIOT DEFENDER<span class="version">V1.0</span></a><span class="edition">THE LANDMARK SERIES <i></i> CHAPTER 01</span><button id="sound" class="icon-button" aria-label="Enable sound" title="Sound off">♪ <span>OFF</span></button></header>
-<main><section class="intro"><div class="eyebrow"><span class="tiny-line"></span> PARIS, FRANCE <span class="coordinates">48.8606° N · 2.3376° E</span></div><div class="title-row"><h1>One gate.<br>One <em>masterpiece.</em></h1><div class="intro-note"><span class="chapter-number">01 /</span><h2>Louvre Defender</h2><p>Let your defenders in. Keep the intruders out.<br>Hold the line until the cavalry arrives.</p></div></div></section>
-<section class="game-layout" aria-label="Louvre Defender game"><div class="game-panel"><div class="arena-top"><span><i class="status-dot"></i> <span id="arena-status">AWAITING YOUR COMMAND</span></span><span class="sector-label">LOUVRE · PROTECTED SECTOR</span><button id="pause" class="mini-button" disabled aria-label="Pause game">||</button></div><div class="arena-wrap"><canvas id="arena" width="900" height="760" aria-label="Game arena: rotate the gate with arrow keys and teleport with Space"></canvas><div class="landmark">${louvreSVG()}</div><div class="map-label"><span>MUSÉE DU LOUVRE</span><small>PARIS · EST. 1793</small></div><div id="game-overlay" class="game-overlay ready"><div class="overlay-badge">◈</div><p class="eyebrow">THE ART OF HOLDING THE LINE</p><h2>A masterpiece worth defending.</h2><p>Move the opening. Build your defense.<br>Protect something worth protecting.</p><button id="arena-start" class="secondary-button">Begin your watch <span>${arrowIcon}</span></button></div><div class="corner-mark tl"></div><div class="corner-mark tr"></div><div class="corner-mark bl"></div><div class="corner-mark br"></div></div><div class="arena-bottom"><div><span class="legend-dot blue"></span> DEFENDER <span class="legend-dot red"></span> INTRUDER <span class="legend-gate"></span> YOUR GATE</div><span id="arena-caption">A LITTLE STRATEGY. A LASTING LEGACY.</span></div></div>
-<aside><div class="mission-heading"><span class="eyebrow">CHAPTER ONE</span><span class="outline-tag">SURVIVAL</span></div><h2 class="mission-title">Guard the extraordinary.</h2><p class="mission-copy">A single opening. A growing crowd.<br>How long can you keep the balance?</p><div class="stats"><div class="timer-stat"><span class="stat-label">CAVALRY ARRIVES IN</span><div><strong id="timer">01:30</strong><span id="timer-state">STANDBY</span></div><div class="time-track"><span id="time-progress"></span></div></div><div class="stat-pair"><div><span class="stat-label">DEFENDERS</span><strong id="defenders">00</strong><small>reached the center</small></div><div><span class="stat-label">FIREPOWER</span><strong><span id="firepower">0</span><span class="per-second"> / sec</span></strong><small>automatic eliminations</small></div></div></div>
-<div id="settings"><fieldset><legend>CAVALRY ARRIVAL <span>SECONDS</span></legend><div class="segments" id="durations"><button data-value="60">60</button><button data-value="90" class="selected" aria-pressed="true">90</button><button data-value="120">120</button></div></fieldset><fieldset><legend>RIOT INTENSITY</legend><div class="segments" id="intensities"><button data-value="Calm">Calm</button><button data-value="Normal" class="selected" aria-pressed="true">Normal</button><button data-value="Chaos">Chaos</button></div></fieldset></div>
-<button id="start" class="primary-button">Begin your watch <span>${arrowIcon}</span></button><button id="new-watch" class="text-button" hidden>↺ &nbsp; Back to setup</button><p class="button-note" id="button-note">90 seconds. One irreplaceable landmark.</p>
-<div class="controls"><div class="controls-title"><span class="eyebrow">YOUR THREE MOVES</span><button id="help" class="help-button" aria-label="Read full game instructions">?</button></div><div class="control-row"><div><kbd>←</kbd><kbd>→</kbd></div><span>Slide the gate around the perimeter</span></div><div class="control-row"><kbd class="space-key">SPACE</kbd><span>Jump to the opposite side</span></div><div class="rule"><span class="rule-icon">&rarr;</span><p>Welcome blue. Block red.<br><strong>One intruder inside ends your watch.</strong></p></div></div></aside></section>
-<section class="how-it-works"><span class="eyebrow">A SIMPLE PLAN</span><div><span class="step-index">01</span><p><strong>Open a way in.</strong><br>Line up the gate with blue defenders.</p></div><div><span class="step-index">02</span><p><strong>Grow your defense.</strong><br>Each arrival adds one elimination / sec.</p></div><div><span class="step-index">03</span><p><strong>Hold until help arrives.</strong><br>At zero, the cavalry takes it from here.</p></div></section></main><footer><span>RIOT DEFENDER <i> / </i> CHAPTER ONE</span><p>A fictional arcade defense of art & architecture.</p><span>BUILT TO PROTECT. <span class="footer-star">✳</span></span></footer>
-<dialog id="help-dialog"><button class="dialog-close" aria-label="Close instructions">×</button><span class="eyebrow">FIELD NOTES</span><h2>One opening. You’re in control.</h2><p>Hold <kbd>←</kbd> or <kbd>→</kbd> to move the green gate counterclockwise or clockwise. Tap <kbd>SPACE</kbd> to jump exactly halfway around the fence, instantly.</p><p><b>Blue defenders</b> head straight for the center. They wait at a closed fence and add one elimination per second only after reaching the center.</p><p><b>Red intruders</b> wander toward the fence. Exposing a red already touching the fence means immediate defeat. A red farther away still has to reach the opening—you can close it in time.</p><p>Your defense automatically targets reds closest to the fence. Survive until zero and reinforcements clear the arena. Press <kbd>P</kbd> or <kbd>ESC</kbd> to pause. Switching tabs pauses your watch.</p><p class="muted">Fictional hostile units; no real-world event or group is represented. Desktop keyboard recommended. Sound is optional.</p><button class="primary-button dialog-done">Understood <span>${arrowIcon}</span></button></dialog><div id="announcement" class="sr-only" aria-live="polite"></div>`;
-document.querySelector('.arena-wrap').insertAdjacentHTML('beforeend','<div id="breach-indicator" hidden aria-hidden="true"><i>!</i><span>BREACH POINT</span></div>');
-const $=s=>document.querySelector(s), canvas=$('#arena'), renderer=new Renderer(canvas);
-let game=null,paused=false,duration=90,intensity='Normal',last=performance.now(),lastPhase='setup',lastDefenders=0,soundEnabled=false,audio=null;
-const held=new Set();
-function announce(text){$('#announcement').textContent=text;}
-function tone(freq=440,length=.08,volume=.025){if(!soundEnabled)return;try{audio??=new (window.AudioContext||window.webkitAudioContext)();audio.resume();const osc=audio.createOscillator(),gain=audio.createGain();osc.connect(gain);gain.connect(audio.destination);osc.type='sine';osc.frequency.value=freq;gain.gain.setValueAtTime(volume,audio.currentTime);gain.gain.exponentialRampToValueAtTime(.001,audio.currentTime+length);osc.start();osc.stop(audio.currentTime+length);}catch{}}
-function setOverlay(className,html){const overlay=$('#game-overlay');overlay.className='game-overlay '+className;overlay.innerHTML=html;overlay.querySelector('[data-restart]')?.addEventListener('click',start);overlay.querySelector('[data-resume]')?.addEventListener('click',()=>setPause(false));}
-function setPause(value){if(!game||game.phase!=='playing')return;paused=value;held.clear();if(value){setOverlay('paused',`<div class="overlay-badge">||</div><p class="eyebrow">TAKE A BREATH</p><h2>Your watch is paused.</h2><p>The Louvre can wait a moment.<br>Resume when you’re ready.</p><button class="primary-button" data-resume>Resume your watch <span>→</span></button>`);}else $('#game-overlay').className='game-overlay hidden';updateHUD();announce(value?'Game paused.':'Game resumed.');}
-function settingsLocked(locked){document.querySelectorAll('#settings button').forEach(b=>b.disabled=locked);}
-function start(){$('#breach-indicator').hidden=true;game=new Game({duration,intensity,seed:Math.floor(Math.random()*4294967296)});paused=false;held.clear();lastDefenders=0;lastPhase='playing';settingsLocked(true);$('#game-overlay').className='game-overlay hidden';$('.arena-wrap').classList.add('active');$('.arena-wrap').classList.remove('finale');$('#start').innerHTML='Restart watch <span>↻</span>';$('#new-watch').hidden=false;$('#button-note').textContent='Hold the arrows. Tap Space. Protect the Louvre.';$('#pause').disabled=false;document.activeElement?.blur();$('.game-layout').scrollIntoView({block:'start',behavior:'instant'});window.scrollBy(0,-15);updateHUD();tone(330,.15);announce('Your watch begins. Admit blue defenders. Keep red intruders out.');}
-function setup(){$('#breach-indicator').hidden=true;game=null;paused=false;held.clear();lastPhase='setup';settingsLocked(false);$('#pause').disabled=true;$('#start').innerHTML=`Begin your watch <span>${arrowIcon}</span>`;$('#new-watch').hidden=true;$('.arena-wrap').classList.remove('active','finale');$('#button-note').textContent=`${duration} seconds. One irreplaceable landmark.`;setOverlay('ready',`<h2>A masterpiece worth defending.</h2><button id="arena-start" class="secondary-button">Begin your watch <span>${arrowIcon}</span></button>`);$('#arena-start').addEventListener('click',start);updateHUD();}
-function result(){const won=game.phase==='victory';if(!won&&game.breach){const marker=$('#breach-indicator');marker.hidden=false;marker.style.left=(game.breach.x/900*100)+'%';marker.style.top=(game.breach.y/760*100)+'%';}held.clear();$('#pause').disabled=true;settingsLocked(false);const survived=Math.floor(game.duration-game.remaining);setOverlay('result '+(won?'victory':'defeat'),`<div class="overlay-badge">${won?'✧':'!'}</div><p class="eyebrow">${won?'LANDMARK PROTECTED':'PERIMETER BREACHED'}</p><h2>${won?'Art endures.<br>Thanks to you.':'One opening.<br>One lesson.'}</h2><p>${won?'Victory — the cavalry has secured the Louvre.':'Defeat — an intruder reached your open gate.'}<br>${game.defenders} defenders recruited · ${game.kills} intruders stopped · ${won?duration:survived}s held</p><button class="primary-button" data-restart>${won?'Play again':'Try again'} <span>${arrowIcon}</span></button>`);$('#start').innerHTML=(won?'Play again':'Restart watch')+' <span>↻</span>';$('#button-note').textContent='Adjust your next watch above, or play again.';tone(won?660:160,.45);announce(won?'Victory. Landmark protected.':'Defeat. An intruder breached the gate.');updateHUD();}
-function updateHUD(){const remaining=game?.remaining??duration,t=Math.max(0,Math.ceil(remaining-1e-7));$('#timer').textContent=`${String(Math.floor(t/60)).padStart(2,'0')}:${String(t%60).padStart(2,'0')}`;$('#defenders').textContent=String(game?.defenders??0).padStart(2,'0');$('#firepower').textContent=game?.defenders??0;$('#time-progress').style.width=(remaining/(game?.duration??duration)*100)+'%';$('#timer-state').textContent=!game?'STANDBY':paused?'PAUSED':game.phase==='playing'?'ON WATCH':game.phase==='defeat'?'BREACHED':game.phase==='finale'?'ARRIVING':'SECURED';$('#arena-status').textContent=!game?'AWAITING YOUR COMMAND':paused?'WATCH PAUSED':game.phase==='playing'?'YOUR WATCH IS UNDERWAY':game.phase==='defeat'?'PERIMETER BREACHED':game.phase==='finale'?'THE CAVALRY HAS ARRIVED':'LANDMARK PROTECTED';$('#arena-caption').textContent=game?`${game.kills} INTRUDERS STOPPED`:'A LITTLE STRATEGY. A LASTING LEGACY.';$('#pause').textContent=paused?'▶':'||';$('#pause').setAttribute('aria-label',paused?'Resume game':'Pause game');}
-$('#start').addEventListener('click',start);$('#arena-start').addEventListener('click',start);$('#new-watch').addEventListener('click',setup);$('#pause').addEventListener('click',()=>{setPause(!paused);document.activeElement?.blur();});
-for(const [id,kind]of [['#durations','duration'],['#intensities','intensity']])document.querySelectorAll(id+' button').forEach(button=>{button.setAttribute('aria-pressed',String(button.classList.contains('selected')));button.addEventListener('click',()=>{document.querySelectorAll(id+' button').forEach(b=>{b.classList.toggle('selected',b===button);b.setAttribute('aria-pressed',String(b===button));});if(kind==='duration')duration=Number(button.dataset.value);else intensity=button.dataset.value;if(!game)updateHUD();$('#button-note').textContent=`${duration} seconds. ${intensity} intensity. One irreplaceable landmark.`;});});
-$('#help').addEventListener('click',()=>{if(game?.phase==='playing')setPause(true);$('#help-dialog').showModal();});$('.dialog-close').addEventListener('click',()=>$('#help-dialog').close());$('.dialog-done').addEventListener('click',()=>$('#help-dialog').close());
-$('#sound').addEventListener('click',()=>{soundEnabled=!soundEnabled;$('#sound').innerHTML=`♪ <span>${soundEnabled?'ON':'OFF'}</span>`;$('#sound').setAttribute('aria-label',soundEnabled?'Disable sound':'Enable sound');$('#sound').title=soundEnabled?'Sound on':'Sound off';if(soundEnabled)tone(440,.1);document.activeElement?.blur();});
-document.addEventListener('keydown',e=>{
- if($('#help-dialog').open)return;
- if(!game||game.phase!=='playing')return;
- if(['Space','ArrowLeft','ArrowRight'].includes(e.code)&&e.target.closest('button,a,input,select,textarea'))return;
- if(['ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
- if(e.code==='KeyP'||e.code==='Escape'){if(!e.repeat)setPause(!paused);return;}
- if(paused)return;
- if(e.code==='Space'&&!e.repeat){game.teleport();tone(250,.07);if(game.phase==='defeat'){lastPhase='defeat';result();}return;}
- if(e.code==='ArrowLeft'||e.code==='ArrowRight')held.add(e.code);
+
+// Locale preferences are shared across chapters; changing language never recreates a game.
+let storage;
+try { storage = window.localStorage; } catch { /* Storage is optional. */ }
+const chapter = ACTIVE_CHAPTER;
+const i18n = createI18n({chapter, storage, locale:initialLocale(storage, navigator.languages)});
+const t = (key, params = {}) => i18n.t(key, {
+  number:String(chapter.number).padStart(2,'0'),
+  chapter:i18n.t('chapter.title'),
+  landmark:i18n.t('chapter.landmark'),
+  ...params,
 });
-document.addEventListener('keyup',e=>held.delete(e.code));window.addEventListener('blur',()=>{held.clear();if(game?.phase==='playing')setPause(true);});document.addEventListener('visibilitychange',()=>{if(document.hidden&&game?.phase==='playing')setPause(true);});
-let hudClock=0;
-function frame(now){const dt=Math.min(.05,Math.max(0,(now-last)/1000));last=now;
- if(game&&!paused&&['playing','finale'].includes(game.phase)){
-  game.update(dt,{direction:(held.has('ArrowRight')?1:0)-(held.has('ArrowLeft')?1:0)});
-  if(game.defenders>lastDefenders){lastDefenders=game.defenders;tone(500+Math.min(400,game.defenders*20),.10);announce(`${game.defenders} defenders. ${game.defenders} eliminations per second.`);}
-  if(game.phase!==lastPhase){lastPhase=game.phase;if(game.phase==='finale'){held.clear();$('#pause').disabled=true;$('.arena-wrap').classList.add('finale');tone(520,.3);announce('Cavalry arriving. The Louvre is safe.');}if(game.phase==='defeat'||game.phase==='victory')result();}
- }
- renderer.draw(game);hudClock+=dt;if(hudClock>.08){hudClock=0;updateHUD();}requestAnimationFrame(frame);
+const html = (key, params) => escapeHTML(t(key, params));
+const $ = selector => document.querySelector(selector);
+$('#app').innerHTML = renderShell(chapter, t);
+const renderer = new Renderer($('#arena'), {t});
+let game = null, paused = false;
+let duration = chapter.rules.duration, intensity = chapter.rules.intensity;
+let last = performance.now(), lastPhase = 'setup', lastDefenders = 0;
+let soundEnabled = false, audio = null, selectedNote = false;
+const held = new Set();
+
+function announce(text) { $('#announcement').textContent = text; }
+function tone(freq = 440, length = .08, volume = .025) {
+  if (!soundEnabled) return;
+  try {
+    audio ??= new (window.AudioContext || window.webkitAudioContext)();
+    audio.resume();
+    const osc = audio.createOscillator(), gain = audio.createGain();
+    osc.connect(gain); gain.connect(audio.destination); osc.type = 'sine'; osc.frequency.value = freq;
+    gain.gain.setValueAtTime(volume, audio.currentTime);
+    gain.gain.exponentialRampToValueAtTime(.001, audio.currentTime + length);
+    osc.start(); osc.stop(audio.currentTime + length);
+  } catch { /* Optional audio must not block gameplay. */ }
 }
-// Read-only production state for accessible instrumentation; mutation hooks exist only in Vite dev mode.
-window.riotDefender={getState:()=>game?({phase:game.phase,paused,remaining:game.remaining,defenders:game.defenders,kills:game.kills,gate:game.gate,units:game.units.map(u=>({...u}))}):{phase:'setup',duration,intensity}};
-if(import.meta.env.DEV)window.riotDefender.test={get game(){return game;},create:opts=>{start();game=new Game(opts);},setPause};
-setup();requestAnimationFrame(frame);
+
+function applyTranslations() {
+  document.documentElement.lang = i18n.locale;
+  document.title = t('app.documentTitle');
+  document.querySelector('meta[name="description"]').content = t('app.description');
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = t(el.dataset.i18n, el.dataset.i18n === 'arena.sector' ? {landmark:t('chapter.sectorName')} : {});
+  });
+  document.querySelectorAll('[data-i18n-aria]').forEach(el => el.setAttribute('aria-label', t(el.dataset.i18nAria)));
+  $('.landmark svg').setAttribute('aria-label', t('chapter.artLabel'));
+  $('#language').value = i18n.locale;
+  updateSound();
+  updateHUD();
+  renderOverlay();
+}
+
+function setOverlay(className, markup) {
+  const overlay = $('#game-overlay');
+  overlay.className = 'game-overlay ' + className;
+  overlay.innerHTML = markup;
+  overlay.querySelector('[data-restart]')?.addEventListener('click', start);
+  overlay.querySelector('[data-resume]')?.addEventListener('click', () => setPause(false));
+  overlay.querySelector('#arena-start')?.addEventListener('click', start);
+}
+function renderOverlay() {
+  if (!game) {
+    setOverlay('ready', `<h2>${html('overlay.ready')}</h2><button id="arena-start" class="secondary-button">${html('action.start')} <span>${arrowIcon}</span></button>`);
+  } else if (game.phase === 'defeat' || game.phase === 'victory') {
+    const won = game.phase === 'victory';
+    const summary = {defenders:game.defenders, kills:game.kills, seconds:Math.floor(game.duration-game.remaining)};
+    setOverlay('result ' + game.phase, `<div class="overlay-badge">${won?'✧':'!'}</div><p class="eyebrow">${html(won?'overlay.victoryEyebrow':'overlay.defeatEyebrow')}</p><h2>${html(won?'overlay.victoryFirst':'overlay.defeatFirst')}<br>${html(won?'overlay.victorySecond':'overlay.defeatSecond')}</h2><p>${html(won?'overlay.victory':'overlay.defeat')}<br>${html('overlay.summary',summary)}</p><button class="primary-button" data-restart>${html(won?'action.replay':'action.retry')} <span>${arrowIcon}</span></button>`);
+  } else if (paused) {
+    setOverlay('paused', `<div class="overlay-badge">||</div><p class="eyebrow">${html('overlay.pauseEyebrow')}</p><h2>${html('overlay.paused')}</h2><p>${html('overlay.pauseFirst')}<br>${html('overlay.pauseSecond')}</p><button class="primary-button" data-resume>${html('action.resume')} <span>→</span></button>`);
+  } else {
+    $('#game-overlay').className = 'game-overlay hidden';
+  }
+}
+function setPause(value) {
+  if (!game || game.phase !== 'playing') return;
+  paused = value; held.clear(); renderOverlay(); updateHUD();
+  announce(t(value?'announce.pause':'announce.resume'));
+}
+function settingsLocked(locked) {
+  document.querySelectorAll('#settings button').forEach(button => { button.disabled = locked; });
+}
+function start() {
+  $('#breach-indicator').hidden = true;
+  game = new Game({duration, intensity, seed:Math.floor(Math.random()*4294967296)});
+  paused = false; held.clear(); lastDefenders = 0; lastPhase = 'playing';
+  settingsLocked(true);
+  $('.arena-wrap').classList.add('active'); $('.arena-wrap').classList.remove('finale');
+  $('#new-watch').hidden = false; $('#pause').disabled = false;
+  document.activeElement?.blur();
+  $('.game-layout').scrollIntoView({block:'start',behavior:'instant'}); window.scrollBy(0,-15);
+  renderOverlay(); updateHUD(); tone(330,.15); announce(t('announce.start'));
+}
+function setup() {
+  $('#breach-indicator').hidden = true;
+  game = null; paused = false; held.clear(); lastPhase = 'setup'; selectedNote = false;
+  settingsLocked(false); $('#pause').disabled = true; $('#new-watch').hidden = true;
+  $('.arena-wrap').classList.remove('active','finale'); renderOverlay(); updateHUD();
+}
+function result() {
+  const won = game.phase === 'victory';
+  if (!won && game.breach) {
+    const marker = $('#breach-indicator'); marker.hidden = false;
+    marker.style.left = (game.breach.x/900*100)+'%'; marker.style.top = (game.breach.y/760*100)+'%';
+  }
+  held.clear(); $('#pause').disabled = true; settingsLocked(false);
+  renderOverlay(); updateHUD(); tone(won?660:160,.45);
+  announce(t(won?'announce.victory':'announce.defeat'));
+}
+function updateSound() {
+  $('#sound').innerHTML = `♪ <span>${html(soundEnabled?'sound.on':'sound.off')}</span>`;
+  $('#sound').setAttribute('aria-label', t(soundEnabled?'sound.disable':'sound.enable'));
+  $('#sound').title = t(soundEnabled?'sound.onTitle':'sound.offTitle');
+}
+function updateHUD() {
+  const remaining = game?.remaining ?? duration, seconds = Math.max(0, Math.ceil(remaining-1e-7));
+  const state = !game ? 'setup' : paused ? 'paused' : game.phase;
+  $('#timer').textContent = `${String(Math.floor(seconds/60)).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`;
+  $('#defenders').textContent = String(game?.defenders??0).padStart(2,'0');
+  $('#firepower').textContent = game?.defenders??0;
+  $('#time-progress').style.width = (remaining/(game?.duration??duration)*100)+'%';
+  $('#timer-state').textContent = t('timer.'+state);
+  $('#arena-status').textContent = t('status.'+state);
+  $('#arena-caption').textContent = game ? t('arena.stopped',{count:game.kills}) : t('arena.caption');
+  $('#pause').textContent = paused?'▶':'||';
+  $('#pause').setAttribute('aria-label',t(paused?'action.resumeGame':'action.pauseGame'));
+  const finished = game && ['defeat','victory'].includes(game.phase);
+  const action = !game ? 'action.start' : game.phase==='victory' ? 'action.replay' : 'action.restart';
+  // Avoid rebuilding buttons on every animation frame: keep keyboard focus intact.
+  const actionKey = action + ':' + i18n.locale;
+  if ($('#start').dataset.action !== actionKey) {
+    $('#start').dataset.action = actionKey;
+    $('#start').innerHTML = `${html(action)} <span>${game?'↻':arrowIcon}</span>`;
+  }
+  $('#button-note').textContent = t(finished?'note.result':game?'note.playing':selectedNote?'note.selected':'note.setup', {seconds:duration,intensity:t('preset.'+intensity)});
+}
+
+$('#start').addEventListener('click', start);
+$('#new-watch').addEventListener('click', setup);
+$('#pause').addEventListener('click', () => { setPause(!paused); document.activeElement?.blur(); });
+$('#language').addEventListener('change', event => {
+  if (i18n.setLocale(event.target.value)) {
+    held.clear(); applyTranslations(); renderer.draw(game); announce(t('settings.languageChanged'));
+  }
+});
+for (const [id,kind] of [['#durations','duration'],['#intensities','intensity']]) {
+  document.querySelectorAll(id+' button').forEach(button => button.addEventListener('click', () => {
+    document.querySelectorAll(id+' button').forEach(other => {
+      other.classList.toggle('selected',other===button); other.setAttribute('aria-pressed',String(other===button));
+    });
+    if (kind === 'duration') duration = Number(button.dataset.value); else intensity = button.dataset.value;
+    selectedNote = true; updateHUD();
+  }));
+}
+$('#help').addEventListener('click', () => { if (game?.phase==='playing') setPause(true); $('#help-dialog').showModal(); });
+$('.dialog-close').addEventListener('click', () => $('#help-dialog').close());
+$('.dialog-done').addEventListener('click', () => $('#help-dialog').close());
+$('#sound').addEventListener('click', () => {
+  soundEnabled = !soundEnabled; updateSound(); if (soundEnabled) tone(440,.1); document.activeElement?.blur();
+});
+document.addEventListener('keydown', event => {
+  if ($('#help-dialog').open || !game || game.phase!=='playing') return;
+  if (['Space','ArrowLeft','ArrowRight'].includes(event.code) && event.target.closest('button,a,input,select,textarea')) return;
+  if (['ArrowLeft','ArrowRight','Space'].includes(event.code)) event.preventDefault();
+  if (event.code==='KeyP' || event.code==='Escape') { if (!event.repeat) setPause(!paused); return; }
+  if (paused) return;
+  if (event.code==='Space' && !event.repeat) {
+    game.teleport(); tone(250,.07); if (game.phase==='defeat') { lastPhase='defeat'; result(); } return;
+  }
+  if (event.code==='ArrowLeft' || event.code==='ArrowRight') held.add(event.code);
+});
+document.addEventListener('keyup', event => held.delete(event.code));
+window.addEventListener('blur', () => { held.clear(); if (game?.phase==='playing') setPause(true); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && game?.phase==='playing') setPause(true); });
+let hudClock = 0;
+function frame(now) {
+  const dt = Math.min(.05, Math.max(0,(now-last)/1000)); last = now;
+  if (game && !paused && ['playing','finale'].includes(game.phase)) {
+    game.update(dt,{direction:(held.has('ArrowRight')?1:0)-(held.has('ArrowLeft')?1:0)});
+    if (game.defenders > lastDefenders) {
+      lastDefenders=game.defenders; tone(500+Math.min(400,game.defenders*20),.10);
+      announce(t('announce.recruit',{count:game.defenders}));
+    }
+    if (game.phase !== lastPhase) {
+      lastPhase = game.phase;
+      if (game.phase === 'finale') {
+        held.clear(); $('#pause').disabled=true; $('.arena-wrap').classList.add('finale');
+        tone(520,.3); announce(t('announce.finale'));
+      }
+      if (game.phase==='defeat' || game.phase==='victory') result();
+    }
+  }
+  renderer.draw(game); hudClock += dt;
+  if (hudClock > .08) { hudClock=0; updateHUD(); }
+  requestAnimationFrame(frame);
+}
+window.riotDefender = {getState:() => {
+  const preferences={locale:i18n.locale,chapter:chapter.id};
+  return game ? {...preferences,phase:game.phase,paused,remaining:game.remaining,defenders:game.defenders,kills:game.kills,gate:game.gate,units:game.units.map(unit=>({...unit}))} : {...preferences,phase:'setup',duration,intensity};
+}};
+if (import.meta.env.DEV) window.riotDefender.test = {get game(){return game;},create:options=>{start();game=new Game(options);},setPause};
+setup(); applyTranslations(); requestAnimationFrame(frame);

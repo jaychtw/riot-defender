@@ -1,4 +1,5 @@
-export const CHAPTER = Object.freeze({id:'louvre', title:'Louvre Defender', duration:90, intensity:'Normal', x:205,y:135,side:490,gateWidth:98,gateSpeed:360,blueSpeed:120,redSpeed:24,radius:5,cap:180});
+import { ACTIVE_CHAPTER } from './chapters/index.js';
+export const CHAPTER = ACTIVE_CHAPTER.rules;
 export const P=CHAPTER.side*4;
 export const CENTER={x:450,y:380};
 export const mod=(n,p=P)=>(n%p+p)%p;
