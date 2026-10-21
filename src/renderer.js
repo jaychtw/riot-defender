@@ -1,19 +1,23 @@
-import {CHAPTER,CENTER,P,mod,pointAt} from './simulation.js';
+import {CHAPTER,CENTER} from './simulation.js';
+import {getPerimeter} from './perimeter.js';
 export class Renderer{
  constructor(canvas,{t=key=>key}={}){this.t=t;this.canvas=canvas;this.ctx=canvas.getContext('2d');this.reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;}
- perimeterPath(from,to){const c=this.ctx;c.beginPath();let q=pointAt(from);c.moveTo(q.x,q.y);for(let s=(Math.floor(from/CHAPTER.side)+1)*CHAPTER.side;s<to;s+=CHAPTER.side){q=pointAt(s);c.lineTo(q.x,q.y);}q=pointAt(to);c.lineTo(q.x,q.y);}
+ setPerimeter(id){this.perimeter=getPerimeter(id);}
+ perimeterPath(from,to){this.ctx.beginPath();this.perimeter.trace(this.ctx,from,to);}
  draw(game){
- const c=this.ctx,{x,y,side:L,gateWidth:g}=CHAPTER;
+ const c=this.ctx,{gateWidth:g}=CHAPTER;
+ this.perimeter=game?.perimeter??this.perimeter??getPerimeter();
+ const path=this.perimeter,P=path.length,L=P/4,pointAt=(s,offset=0)=>path.pointAt(s,offset),mod=s=>path.normalize(s);
  c.clearRect(0,0,900,760);c.fillStyle='#e7e9df';c.fillRect(0,0,900,760);
  c.strokeStyle='#d7dbcf';c.lineWidth=.7;
  c.beginPath();for(let i=0;i<900;i+=30){c.moveTo(i,0);c.lineTo(i,760);}for(let i=10;i<760;i+=30){c.moveTo(0,i);c.lineTo(900,i);}c.stroke();
- c.fillStyle='#53674710';c.fillRect(x-6,y-6,L+12,L+12);
- c.fillStyle='#f2efe3';c.fillRect(x,y,L,L);
- c.strokeStyle='#d9dac9';c.lineWidth=.8;c.strokeRect(x+13,y+13,L-26,L-26);
+ this.perimeterPath(0,P);c.closePath();c.strokeStyle='#53674710';c.lineWidth=14;c.stroke();
+ c.fillStyle='#f2efe3';c.fill();
+ c.save();c.clip();c.strokeStyle='#d9dac9';c.lineWidth=20;c.globalAlpha=.45;c.stroke();c.restore();
  // Four modest approach markers, outside the collision geometry.
  c.strokeStyle='#a9b49a';c.lineWidth=1;
  for(const s of [L*.5,L*1.5,L*2.5,L*3.5]){const p=pointAt(s,24),q=pointAt(s,35);c.beginPath();c.moveTo(p.x,p.y);c.lineTo(q.x,q.y);c.stroke();}
- const gate=game?.gate??2.5*L;
+ const gate=game?.gate??path.initialS;
  const begin=mod(gate+g/2),end=begin+P-g;
  c.lineCap='butt';c.strokeStyle='#71816b';c.lineWidth=3;this.perimeterPath(begin,end);c.stroke();
  c.strokeStyle='#faf9ee';c.lineWidth=1;this.perimeterPath(begin,end);c.stroke();

@@ -5,12 +5,14 @@ import { louvreSVG } from '../landmark.js';
 export const LOUVRE_CHAPTER = Object.freeze({
   id: 'louvre',
   number: 1,
+  recommendedPerimeter: 'square',
   coordinates: '48.8606° N · 2.3376° E',
   artwork: louvreSVG,
   rules: Object.freeze({id:'louvre', title:'Louvre Defender', duration:90, intensity:'Normal', x:205,y:135,side:490,gateWidth:98,gateSpeed:360,blueSpeed:120,redSpeed:24,radius:5,cap:180}),
   messages: Object.freeze({
     en: Object.freeze({
       'chapter.title': 'Louvre Defender',
+      'chapter.name': 'Louvre',
       'chapter.location': 'PARIS, FRANCE',
       'chapter.landmark': 'the Louvre',
       'chapter.sectorName': 'LOUVRE',
@@ -18,8 +20,9 @@ export const LOUVRE_CHAPTER = Object.freeze({
       'chapter.established': 'PARIS · EST. 1793',
       'chapter.artLabel': 'Original frontal illustration of the Louvre palace and glass pyramid',
     }),
-    'zh-Hant': Object.freeze({
+    'zh-TW': Object.freeze({
       'chapter.title': '羅浮宮保衛戰',
+      'chapter.name': '羅浮宮',
       'chapter.location': '法國・巴黎',
       'chapter.landmark': '羅浮宮',
       'chapter.sectorName': '羅浮宮',

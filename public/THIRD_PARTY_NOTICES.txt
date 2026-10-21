@@ -2,4 +2,4 @@ DM Sans — Copyright 2014 The DM Sans Project Authors (https://github.com/googl
 Libre Caslon Display — Copyright 2012 The Libre Caslon Project Authors (https://github.com/impallari/Libre-Caslon-Display).
 Both fonts are distributed under the SIL Open Font License, Version 1.1.
 Full licenses are included as OFL-DM-Sans.txt and OFL-Libre-Caslon-Display.txt.
-The Louvre SVG illustration is original project artwork. The private reference image is not redistributed.
+The five landmark SVG illustrations (Louvre, Forbidden City, Blue Mosque, Longshan Temple, St. Peter’s Basilica) are original project artwork. Supplied reference images and concept crops are not redistributed.

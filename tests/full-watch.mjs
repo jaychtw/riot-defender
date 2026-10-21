@@ -2,32 +2,28 @@ import {chromium} from '@playwright/test';
 import assert from 'node:assert/strict';
 import {existsSync} from 'node:fs';
 import fs from 'node:fs/promises';
-import {CHAPTER,P,mod,perimeterOf,isOpen,sweptOpen,distanceToFence} from '../src/simulation.js';
+import {getPerimeter} from '../src/perimeter.js';
+import {chooseControl} from './arena-controller.js';
+const perimeter=process.env.TEST_PERIMETER||'square',landmark=process.env.TEST_LANDMARK||'louvre';
+const path=getPerimeter(perimeter);
 const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||(existsSync('/usr/bin/chromium')?'/usr/bin/chromium':chromium.executablePath()),args:['--no-sandbox']});
 const locale=process.env.TEST_LOCALE||'en';
-assert.ok(['en','zh-Hant'].includes(locale));
+assert.ok(['en','zh-TW'].includes(locale));
 const input=process.env.TEST_INPUT||'keyboard';
 assert.ok(['keyboard','touch'].includes(input));
-const artifactPrefix=`production-${locale}${input==='touch'?'-touch':''}`;
+const artifactPrefix=`production-${locale}${input==='touch'?'-touch':''}${perimeter==='square'?'':'-'+perimeter}`;
 const page=await browser.newPage({viewport:input==='touch'?{width:390,height:844}:{width:1440,height:1120},hasTouch:input==='touch',isMobile:input==='touch'}),errors=[];
 const cdp=input==='touch'?await page.context().newCDPSession(page):null;
 page.on('pageerror',e=>errors.push(e.message));
-function choose(g){
- const reds=g.units.filter(u=>u.type==='red'&&distanceToFence(u)<38);
- const safe=s=>!reds.some(u=>isOpen(perimeterOf(u.x,u.y),s,CHAPTER.gateWidth+50));
- let target=g.gate;
- if(90-g.remaining>6){const candidate=g.units.filter(u=>u.type==='blue'&&u.state!=='inside').map(u=>perimeterOf(u.x,u.y)).filter(safe).sort((a,b)=>Math.abs(mod(a-g.gate+P/2)-P/2)-Math.abs(mod(b-g.gate+P/2)-P/2))[0];if(candidate!==undefined)target=candidate;}
- if(!safe(g.gate)){if(safe(mod(g.gate+P/2)))return {teleport:true,direction:0};const s=Array.from({length:40},(_,i)=>i*P/40).find(safe);if(s!==undefined)target=s;}
- const diff=mod(target-g.gate+P/2)-P/2;let direction=Math.abs(diff)<4?0:Math.sign(diff);
- if(reds.some(u=>distanceToFence(u)<=CHAPTER.radius+.001&&sweptOpen(u.s,g.gate,direction*CHAPTER.gateSpeed*.05)))direction=0;
- return {teleport:false,direction};
-}
+const choose=g=>chooseControl(g,path);
 try{
  await page.addInitScript(()=>{Math.random=()=>71/4294967296;});
  await page.clock.install({time:new Date('2026-10-21T00:00:00Z')});
+ await page.clock.pauseAt(new Date('2026-10-21T00:00:10Z'));
  await page.goto(process.env.TEST_URL||'http://127.0.0.1:4173');await page.evaluate(()=>document.fonts.ready);
  assert.equal(await page.evaluate(()=>!!window.riotDefender.test),false,'Run this acceptance test against the production build.');
  await page.locator('#language').selectOption(locale);
+ await page.locator('#landmark-choice').selectOption(landmark);await page.locator('#perimeter-choice').selectOption(perimeter);
  await page.locator('#start').click();let held=0,maxUnits=0,captured=false,state;
  for(let i=0;i<2000;i++){
   state=await page.evaluate(()=>window.riotDefender.getState());maxUnits=Math.max(maxUnits,state.units.length);
@@ -47,6 +43,6 @@ try{
  }
  assert.equal(state.phase,'victory');assert.equal(state.remaining,0);assert.equal(state.units.filter(u=>u.type==='red').length,0);assert.ok(state.defenders>0);assert.deepEqual(errors,[]);
  await page.screenshot({path:`artifacts/${artifactPrefix}-victory.png`,fullPage:true});
- const result={locale,input,preset:'90s / Normal',seed:71,controls:input==='touch'?'Real touchscreen hold buttons and Switch':'Real ArrowLeft/ArrowRight/Space key events',clock:'90 virtual seconds + automatic finale',phase:state.phase,defenders:state.defenders,kills:state.kills,maxUnits,errors};
+ const result={locale,input,landmark,perimeter,preset:'90s / Normal',seed:71,controls:input==='touch'?'Real touchscreen hold buttons and Switch':'Real ArrowLeft/ArrowRight/Space key events',clock:'90 virtual seconds + automatic finale',phase:state.phase,defenders:state.defenders,kills:state.kills,maxUnits,errors};
  await fs.writeFile(`artifacts/${artifactPrefix}-full-watch.json`,JSON.stringify(result,null,2));console.log(JSON.stringify(result,null,2));
 }finally{await browser.close();}

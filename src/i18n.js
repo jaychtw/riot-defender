@@ -3,15 +3,15 @@ import zhHant from './locales/zh-Hant.js';
 
 export const LOCALES = Object.freeze([
   Object.freeze({id:'en', label:'English'}),
-  Object.freeze({id:'zh-Hant', label:'繁體中文'}),
+  Object.freeze({id:'zh-TW', label:'繁體中文'}),
 ]);
-export const MESSAGES = Object.freeze({en, 'zh-Hant':zhHant});
+export const MESSAGES = Object.freeze({en, 'zh-TW':zhHant});
 export const LOCALE_STORAGE_KEY = 'riot-defender.locale';
 
 export function resolveLocale(value) {
   if (typeof value !== 'string') return null;
   if (/^en(?:-|$)/i.test(value)) return 'en';
-  if (/^zh-(?:Hant|TW|HK|MO)(?:-|$)/i.test(value)) return 'zh-Hant';
+  if (/^zh-(?:Hant|TW|HK|MO)(?:-|$)/i.test(value)) return 'zh-TW';
   return null;
 }
 
@@ -31,10 +31,12 @@ export function createI18n({locale = 'en', chapter, storage} = {}) {
   let current = resolveLocale(locale) ?? 'en';
   return {
     get locale() { return current; },
+    setChapter(value) { chapter=value; },
     setLocale(value) {
-      if (!LOCALES.some(item => item.id === value)) return false;
-      current = value;
-      try { storage?.setItem(LOCALE_STORAGE_KEY, value); } catch { /* Session switching still works. */ }
+      const resolved=resolveLocale(value);
+      if (!resolved) return false;
+      current = resolved;
+      try { storage?.setItem(LOCALE_STORAGE_KEY, current); } catch { /* Session switching still works. */ }
       return true;
     },
     t(key, params = {}) {

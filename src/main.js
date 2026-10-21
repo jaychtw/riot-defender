@@ -1,7 +1,9 @@
 import '@fontsource-variable/dm-sans';
 import '@fontsource/libre-caslon-display/latin-400.css';
 import './style.css';
-import { ACTIVE_CHAPTER } from './chapters/index.js';
+import { CHAPTERS } from './chapters/index.js';
+import {getPerimeter} from './perimeter.js';
+import {loadSettings,saveSettings} from './settings.js';
 import { createI18n, initialLocale } from './i18n.js';
 import { renderShell, arrowIcon, escapeHTML } from './view.js';
 import { Game } from './simulation.js';
@@ -11,7 +13,8 @@ import { TouchControls } from './touch-controls.js';
 // Locale preferences are shared across chapters; changing language never recreates a game.
 let storage;
 try { storage = window.localStorage; } catch { /* Storage is optional. */ }
-const chapter = ACTIVE_CHAPTER;
+const saved=loadSettings(storage);
+let chapter = CHAPTERS[saved.landmark], perimeter=saved.perimeter;
 const i18n = createI18n({chapter, storage, locale:initialLocale(storage, navigator.languages)});
 const t = (key, params = {}) => i18n.t(key, {
   number:String(chapter.number).padStart(2,'0'),
@@ -24,7 +27,7 @@ const $ = selector => document.querySelector(selector);
 $('#app').innerHTML = renderShell(chapter, t);
 const renderer = new Renderer($('#arena'), {t});
 let game = null, paused = false;
-let duration = chapter.rules.duration, intensity = chapter.rules.intensity;
+let duration = saved.duration, intensity = saved.intensity;
 let last = performance.now(), lastPhase = 'setup', lastDefenders = 0;
 let soundEnabled = false, audio = null, selectedNote = false;
 const held = new Set();
@@ -63,6 +66,7 @@ function applyTranslations() {
   document.querySelectorAll('[data-i18n-aria]').forEach(el => el.setAttribute('aria-label', t(el.dataset.i18nAria)));
   $('.landmark svg').setAttribute('aria-label', t('chapter.artLabel'));
   $('#language').value = i18n.locale;
+  updateSelectionUI();
   updateSound();
   updateHUD();
   renderOverlay();
@@ -95,11 +99,11 @@ function setPause(value) {
   announce(t(value?'announce.pause':'announce.resume'));
 }
 function settingsLocked(locked) {
-  document.querySelectorAll('#settings button').forEach(button => { button.disabled = locked; });
+  document.querySelectorAll('#settings button,#settings select').forEach(button => { button.disabled = locked; });
 }
 function start() {
   $('#breach-indicator').hidden = true;
-  game = new Game({duration, intensity, seed:Math.floor(Math.random()*4294967296)});
+  game = new Game({duration, intensity, perimeter, seed:Math.floor(Math.random()*4294967296)});
   paused = false; clearInput(); lastDefenders = 0; lastPhase = 'playing';
   settingsLocked(true);
   $('.arena-wrap').classList.add('active'); $('.arena-wrap').classList.remove('finale');
@@ -155,7 +159,35 @@ function updateHUD() {
   $('#button-note').textContent = t(finished?'note.result':game?'note.playing':selectedNote?'note.selected':'note.setup', {seconds:duration,intensity:t('preset.'+intensity)});
 }
 
+
+function persistSelection(){saveSettings(storage,{landmark:chapter.id,perimeter,duration,intensity});}
+function updateSelectionUI(){
+  $('#landmark-choice').value=chapter.id;
+  $('#perimeter-choice').value=perimeter;
+  for(const option of $('#perimeter-choice').options){option.textContent=t('shape.'+option.value)+(option.value===chapter.recommendedPerimeter?' · '+t('settings.recommended'):'');}
+  $('#perimeter-recommendation').textContent=t('settings.recommendation',{name:t('chapter.name'),shape:t('shape.'+chapter.recommendedPerimeter)});
+  for(const [id,value] of [['#durations',duration],['#intensities',intensity]]){
+    document.querySelectorAll(id+' button').forEach(button=>{const selected=String(value)===button.dataset.value;button.classList.toggle('selected',selected);button.setAttribute('aria-pressed',String(selected));});
+  }
+  $('.coordinates').textContent=chapter.coordinates;
+  $('.chapter-number').textContent=String(chapter.number).padStart(2,'0')+' /';
+  const art=$('.landmark'),box=getPerimeter(perimeter).artBox;
+  Object.assign(art.style,{left:(box.x/900*100)+'%',top:(box.y/760*100)+'%',width:(box.width/900*100)+'%',height:(box.height/760*100)+'%'});
+  art.dataset.landmark=chapter.id;
+  $('.game-panel').dataset.perimeter=perimeter;
+  renderer.setPerimeter(perimeter);
+}
+$('#landmark-choice').addEventListener('change',event=>{
+  chapter=CHAPTERS[event.target.value];perimeter=chapter.recommendedPerimeter;
+  i18n.setChapter(chapter);$('.landmark').innerHTML=chapter.artwork();
+  setup();selectedNote=true;persistSelection();applyTranslations();renderer.draw(null);
+});
+$('#perimeter-choice').addEventListener('change',event=>{
+  perimeter=event.target.value;setup();selectedNote=true;persistSelection();updateSelectionUI();updateHUD();renderer.draw(null);
+});
+
 $('#start').addEventListener('click', start);
+$('#setup-start').addEventListener('click', start);
 $('#new-watch').addEventListener('click', setup);
 $('#pause').addEventListener('click', () => { setPause(!paused); document.activeElement?.blur(); });
 $('#language').addEventListener('change', event => {
@@ -169,7 +201,8 @@ for (const [id,kind] of [['#durations','duration'],['#intensities','intensity']]
       other.classList.toggle('selected',other===button); other.setAttribute('aria-pressed',String(other===button));
     });
     if (kind === 'duration') duration = Number(button.dataset.value); else intensity = button.dataset.value;
-    selectedNote = true; updateHUD();
+    if(game)setup();
+    selectedNote = true; persistSelection(); updateHUD();
   }));
 }
 $('#help').addEventListener('click', () => { if (game?.phase==='playing') setPause(true); $('#help-dialog').showModal(); });
@@ -219,8 +252,8 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 window.riotDefender = {getState:() => {
-  const preferences={locale:i18n.locale,chapter:chapter.id};
-  return game ? {...preferences,phase:game.phase,paused,remaining:game.remaining,defenders:game.defenders,kills:game.kills,gate:game.gate,units:game.units.map(unit=>({...unit}))} : {...preferences,phase:'setup',duration,intensity};
+  const preferences={locale:i18n.locale,chapter:chapter.id,landmark:chapter.id,perimeter:game?.perimeter.id??perimeter,duration,intensity};
+  return game ? {...preferences,phase:game.phase,paused,remaining:game.remaining,defenders:game.defenders,kills:game.kills,gate:game.gate,u:game.u,perimeterLength:game.perimeter.length,units:game.units.map(unit=>({...unit}))} : {...preferences,phase:'setup',duration,intensity};
 }};
-if (import.meta.env.DEV) window.riotDefender.test = {get game(){return game;},create:options=>{start();game=new Game(options);},setPause};
+if (import.meta.env.DEV) window.riotDefender.test = {get game(){return game;},create:options=>{start();game=new Game({perimeter,...options});},setPause};
 setup(); applyTranslations(); requestAnimationFrame(frame);

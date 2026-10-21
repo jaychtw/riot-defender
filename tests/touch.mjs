@@ -49,7 +49,7 @@ try{
  await advance(50);assert.ok(await page.evaluate(()=>['#5a94b7','#c26452'].every(color=>window.__unitRadii.some(v=>v.radius===10&&v.color===color))));
  assert.ok(await page.evaluate(()=>window.__unitRadii.some(v=>v.radius===5)));
  pass('Artwork contains no visible text or caption overlay; both dot colors render at double diameter with original contact cores');
- for(const locale of ['en','zh-Hant']){
+ for(const locale of ['en','zh-TW']){
   await page.locator('#language').selectOption(locale);
   for(const width of [320,360,390,430]){
    await page.setViewportSize({width,height:844});await fresh();
@@ -119,7 +119,7 @@ try{
  const dev=await page.evaluate(()=>!!window.riotDefender.test);
  if(dev){
   await page.setViewportSize({width:390,height:844});
-  for(const locale of ['en','zh-Hant']){
+  for(const locale of ['en','zh-TW']){
    await page.locator('#language').selectOption(locale);await fresh();
    await page.evaluate(()=>{const g=window.riotDefender.test.game;g.spawning=false;g.units=[];for(const s of [180,740,1580])g.addUnit('blue',s,{offset:5,speed:0,typeState:'waiting'});g.addUnit('blue',1225,{offset:70,speed:0});for(const [s,offset]of [[400,45],[620,5],[1440,5],[1080,60]])g.addUnit('red',s,{offset,speed:0,typeState:offset===5?'pressing':'approach'});});
    await advance(50);await page.screenshot({path:`artifacts/touch-${locale}-mobile-gameplay.png`});
@@ -131,7 +131,7 @@ try{
   pass('Defeat and the victory finale clear gestures, disable controls, and preserve established outcomes');
  }
  await page.setViewportSize({width:844,height:390});
- for(const locale of ['en','zh-Hant']){
+ for(const locale of ['en','zh-TW']){
   await page.locator('#language').selectOption(locale);await fresh();await readableControlLabels(locale);
   await page.screenshot({path:`artifacts/touch-${locale}-landscape.png`});
   const landscapeRow=await page.locator('#touch-controls').boundingBox();assert.ok(landscapeRow.y+landscapeRow.height<=390);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));

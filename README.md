@@ -1,71 +1,71 @@
-# Riot Defender v1.0
+# Riot Defender v1.1 — International Landmarks & Customizable Arenas
 
-**Chapter One: Louvre Defender** is a desktop-first browser survival game. Rotate one opening around a square fence, recruit blue defenders, and protect the Louvre until automatic reinforcements arrive. Only the Louvre chapter is implemented.
+[Play Riot Defender](https://jaychtw.github.io/riot-defender/)
 
-The original frontal SVG illustration follows the privately supplied reference's architectural direction. The reference image is not bundled or redistributed. Fonts ship locally under the SIL Open Font License; the game makes no external runtime requests and requires no credentials.
+Protect a landmark by moving one opening around its fence. Admit blue defenders, block red intruders, and survive until reinforcements arrive. One intruder through the open gate ends the watch.
 
-## Run
+Choose independently:
 
-Node.js 22+ and npm are required. In `/workspace/riot-defender` (or your local checkout):
+| Landmark | Place | Recommended perimeter |
+| --- | --- | --- |
+| Louvre | Paris, France | Square |
+| Forbidden City | Beijing, China | Rectangle |
+| Blue Mosque | Istanbul, Türkiye | Octagon |
+| Longshan Temple | Taipei, Taiwan | Irregular |
+| St. Peter’s Basilica | Vatican City | Circle |
+
+All 25 landmark/perimeter combinations are available. Selecting a landmark suggests its recommended shape; choosing another shape overrides that suggestion. Duration (60/90/120 seconds), intensity (Calm/Normal/Chaos), language, and arena selections persist locally when browser storage is available. No chapters are locked and there is no campaign progression. Arenas are fictional and do not represent actual security layouts.
+
+English and Traditional Chinese (`en`, `zh-TW`) switch live without resetting a watch. Existing `zh-Hant` saved language preferences migrate automatically.
+
+## Controls and rules
+
+- Hold **← / Counterclockwise / 逆時針** or **→ / Clockwise / 順時針** to move the opening continuously. Releasing stops movement.
+- **Space / Switch / 切換** instantly jumps half the perimeter’s arc length. On irregular shapes, that is not necessarily visually opposite. Intermediate sections remain closed during the jump.
+- **P**, **Escape**, or the pause button pauses. Focus loss/backgrounding pauses safely. Touch cancellation, pointer capture loss, orientation changes, and restart clear held inputs.
+- Blue defenders approach in a straight line, wait at their actual closed-fence contact point, then continue to the center when admitted. Each recruited defender adds one automatic elimination per second.
+- Defense prioritizes the red closest to the actual fence. A red already touching an exposed gate causes immediate loss; a visibly separated red still has to travel to the fence.
+- At timer zero, controls lock and reinforcements clear the arena before victory. There is no additional combat phase.
+
+Unit visibility retains the v1.0 10-unit outer ring and 5-unit solid collision core. Contact is judged by the solid core. Keyboard and native touch inputs share the same game engine.
+
+## Development
+
+Use Node 22 (`.nvmrc`) and npm:
 
 ```sh
 npm ci
-npm run dev -- --port 5173
+npm run dev
+npm test
+npm run test:browser
+npm run build
+npm run preview
 ```
 
-Hold **Left / Right** to move the opening counterclockwise / clockwise. Tap **Space** for an instantaneous opposite-perimeter jump. **P / Escape** pauses. Switching tabs also pauses. Open field notes with **?**. Sound is optional and starts off. On touchscreens, hold **⬅ / ➡** beneath the arena to move continuously, release to stop, and tap **Switch / 切換** for the same opposite-side jump as Space. The three controls use 56px-high portrait targets and at least 44px-high landscape targets. Pointer capture, cancellation, interruptions, and simultaneous touches are handled without latched movement. The game field and controls block panning/selection while playing; pause to scroll the field normally. A compact countdown stays beside the arena pause button.
+Browser checks expect Vite on port 5173 by default. Install Playwright Chromium with `npx playwright install --with-deps chromium`, or set `CHROMIUM_PATH` to an installed Chromium. `TEST_URL` overrides the target origin. Artifacts are generated under `artifacts/` and intentionally excluded from Git.
 
-Choose **60 / 90 / 120 seconds** and **Calm / Normal / Chaos**. Defaults: **90 seconds, Normal**. A red already touching the gate breaches immediately; a separated red still has to reach it. Blue units add firepower only on reaching the center. Every recruited defender adds one nearest-fence elimination per second. At zero, controls lock and a 2.8-second automatic cavalry finale clears the remaining reds before Victory.
-
-## Language settings
-
-Use **Language → English / 繁體中文** in the header. The selection is remembered in local storage across reloads and chapters. With no saved choice, an English or Traditional Chinese browser preference is used; unsupported languages fall back to English. Switching languages preserves the current watch, selected presets, recruitment, and pause/result state. Menus, instructions, HUD, Canvas labels, results, metadata, and screen-reader labels are translated. Language switching still works when storage is blocked; in that case the choice lasts for the current page only. Chinese typography uses the device's Traditional Chinese font stack, with no external font requests.
-
-## Verify
+A full 90-second production acceptance run uses only actual keyboard/touch input events, with an accelerated browser clock:
 
 ```sh
-npm test                 # deterministic simulation suite; all nine complete preset runs
-npm run test:browser     # run while the development server is running
-npm run build            # production static site in dist/
-npm run preview -- --port 4173
-TEST_URL=http://127.0.0.1:4173 npm run test:browser
 TEST_URL=http://127.0.0.1:4173 node tests/full-watch.mjs
-TEST_URL=http://127.0.0.1:4173 TEST_LOCALE=zh-Hant node tests/full-watch.mjs
-TEST_URL=http://127.0.0.1:4173 TEST_LOCALE=zh-Hant TEST_INPUT=touch node tests/full-watch.mjs
+TEST_URL=http://127.0.0.1:4173 TEST_LANDMARK=longshan-temple TEST_PERIMETER=irregular TEST_LOCALE=zh-TW TEST_INPUT=touch node tests/full-watch.mjs
 ```
 
-Browser tests use `/usr/bin/chromium` when present, otherwise Playwright's bundled browser. Set `CHROMIUM_PATH` to override. Install Chromium on a fresh machine with `npx playwright install --with-deps chromium`. Screenshots and test reports are generated in `artifacts/` and ignored by Git. Development-only deterministic fixture hooks are stripped from production; the production full-watch test uses real key events and a seeded random generator with a virtual browser clock, without mutating game state.
+## Shared architecture
 
-## Deploy
+- `src/perimeter.js`: closed arc-length paths; analytic circle and authored polygons; true Euclidean projection, outward placement, continuous swept circle/segment contact, gate intervals, and canvas tracing.
+- `src/simulation.js`: one fixed-step game engine for every landmark and shape. Gate position is stored as normalized `u`; the physical `gate` getter retains compatibility with the v1.0 test surface. All shapes use the original 98-unit gap, 360-unit/second gate speed, 5-unit collision radius, spawn-pressure formula, and firing cadence.
+- `src/chapters/`: selectable landmark metadata and bilingual identity. All five reference the same rules, with no separate engines.
+- `src/landmark.js` and `src/artworks.js`: five original frontal SVG illustrations, with text-free architectural detail and subtle shading. Reference PNGs are neither runtime assets nor redistributed. Safe art rectangles vary by fence shape; illustrations retain their frontal perspective and aspect ratio.
+- `src/i18n.js`, `src/locales/`, `src/settings.js`: live localization, legacy locale migration, and validated saved setup choices.
+- `src/touch-controls.js`: shared hold/cancel/Switch handling, retained from v1.0.
 
-`dist/` is the complete playable artifact. Serve its contents through any static HTTPS host; relative asset URLs support subdirectory hosting. A server is required; do not open `index.html` with `file://`.
+`npm run build` exports five standalone illustrations into `dist/artwork/`: `louvre.svg`, `forbidden-city.svg`, `blue-mosque.svg`, `longshan-temple.svg`, and `st-peters.svg`. The inline artwork and exported assets use the same source functions.
 
-The included `.github/workflows/deploy.yml` tests and builds pushes to `main`, then deploys to **GitHub Pages**. In repository **Settings → Pages**, set **Source: GitHub Actions** before deployment. The workflow needs GitHub Pages enabled for the repository and the standard `pages: write` / `id-token: write` job permissions. The configured workflow performs deployment; the local build alone does not establish public publication.
+See [the product GDD](docs/GDD-v1.1.md), [validation coverage and limitations](docs/VALIDATION.md), and [the change log](CHANGELOG.md). Intentional accuracy corrections to nearest-fence targeting near square corners and within-step gate/contact timing are documented in the change log.
 
-To publish manually after enabling Pages, push `main` or run **Test and deploy Louvre Defender** from the Actions tab. Check the deployment job and its published URL. No personal token is embedded in the workflow or game.
+## Deployment
 
-## Structure and tuning
+Push to `main` triggers `.github/workflows/deploy.yml`: clean dependency install, unit/regression tests, desktop/mobile browser acceptance including the 100-combination device/language matrix, production build, full survival checks on all five fence types, then GitHub Pages deployment. The workflow uploads browser screenshots and JSON evidence as `browser-evidence`. Pages must use the GitHub Actions source.
 
-- `src/simulation.js`: deterministic state, circular perimeter geometry, swept gate exposure, physical circle contacts, recruitment, spawn director, firing cadence, and finale.
-- `src/renderer.js`: schematic Canvas arena, outlined blue units, red units, gate, thin fire effects, and abstract helicopter cavalry.
-- `src/landmark.js`: independent original frontal Louvre SVG, rendered above Canvas so effects do not obscure the building.
-- `src/chapters/`: chapter registry and per-chapter identity, artwork, simulation defaults, and localized landmark copy. Only `louvre` is registered.
-- `src/locales/` / `src/i18n.js`: shared English and Traditional Chinese dictionaries, preference persistence, interpolation, and English fallback.
-- `src/view.js`: shared, chapter-aware HTML shell; language changes update its text without replacing the simulation.
-- `src/touch-controls.js`: pointer capture, hold/release, cancellation, accessible button-keyboard input, and momentary opposite-side switching. It sends the existing simulation commands.
-- `src/main.js` / `src/style.css`: setup, HUD, controls, accessible dialogs, sound, responsive layout, and reduced-motion support.
-- `tests/`: simulation and browser acceptance checks. Source GDD and implementation prompt are retained in `docs/`.
-
-`CHAPTER` contains the gate dimensions, unit speeds, and cap. Side length is 490 units; opening is 98 units (20% of a side), gate speed 360 units/s, blues 120 units/s, reds approximately 24 units/s, collision-circle radius 5, active-unit cap 180. Units now draw a 10-unit-radius outer visibility ring (twice the original diameter) around the unchanged 5-unit solid contact core. The outer ring can visually meet or overlap the fence before the contact core; only the core determines entry, as before. Red rate is `(0.75 + 4.5 × elapsed / duration + min(10, 0.45 × recruited)) × intensity`, with multipliers 0.6 / 1 / 1.6. The first two blue arrivals approach the initial gate; later arrivals spread around the perimeter. The simulation substeps at a maximum 1/120 second; rendering clamps large frame delays and pauses hidden tabs.
-
-Balance is an initial playtest baseline. Seeded legal controllers complete every preset, but human playtesting is still needed to tune perceived difficulty. No other chapters, manual aiming, upgrades, weapons, or multiplayer are included.
-
-## Future chapter and language extensions
-
-Chapter-specific names, locations, artwork descriptions, and map captions belong to each chapter's `messages`, not shared translations or controller code. A chapter definition supplies `id`, `number`, `coordinates`, `artwork`, `rules`, and `messages`; register it in `src/chapters/index.js` when a future chapter is authorized. The active chapter currently remains Louvre. Runtime chapter selection and changes to collision geometry are not implemented by this bilingual update.
-
-For another language, add its shared dictionary in `src/locales/`, register its native label and browser aliases in `src/i18n.js`, and supply each chapter's localized messages. Existing English fallback allows staged translation. Keep interpolation tokens consistent. `npm test` checks dictionary coverage and chapter membership; the browser suite covers persistence, restricted storage, language changes during play/pause/results, instructions, Canvas text, accessibility labels, and 320px/390px layouts. The CI deploy workflow also completes the production survival watch in both languages.
-
-## Mobile and visual refinement
-
-The separate Louvre caption overlays were removed. The original frontal SVG architecture, colors, proportions, and shading are unchanged and contain no baked-in lettering. Larger red/blue visibility rings improve readability while the inner solid cores identify the preserved collision sizes. See `docs/MOBILE_REFINEMENT.md` for validation and the remaining visual-contact and landscape tradeoffs.
+The game has no external runtime service, remote font request, analytics, or image dependency. Generated `dist/` is the complete static deployment.
